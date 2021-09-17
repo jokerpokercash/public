@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1" http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<style>
+* {box-sizing: border-box}
+body {font-family: "Lato", sans-serif;}
+
+/* Style the tab */
+.tab {
+  float: left;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+  width: 20%;
+  height: 20%;
+}
+
+/* Style the buttons inside the tab */
+.tab div {
+  display: block;
+  background-color: inherit;
+  color: black;
+  padding: 22px 16px;
+  width: 100%;
+  border: none;
+  outline: none;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.3s;
+  font-size: 17px;
+}
+
+/* Change background color of buttons on hover */
+.tab div:hover {
+  background-color: #ddd;
+}
+
+/* Create an active/current "tab button" class */
+.tab div.active {
+  background-color: #ccc;
+}
+
+/* Style the tab content */
+.tabcontent {
+  float: left;
+  padding: 0px 12px;
+  border: 1px solid #ccc;
+  width: 80%;
+  border-left: none;
+  height: 100%;
+}
+
+
+#deltaBar {
+  width: 1%;
+  height: 30px;
+  background-color: #04AA6D;
+}
+
+
+/*style delta */
+.sh {
+     background-color: #ff6424;
+     text-decoration:line-through;
+     width= auto;
+     display :inline-block;
+}
+   
+.im {
+     background-color: lightgreen;
+}
+</style>
+</head>
+<body>
+
+<div style="display: flex;">
+  <div style="flex-grow: 1;">
+     <h1>FED Statment Tracker</h1>
+  </div>
+  <div><img id="flag"  width="400" height="90" style="display: none;"  
+    src="{{url_for('static', filename='newsletter.gif')}}">
+  </div>
+</div>
+<h3>Last FED Statment Date: <span id="news"></span></h3>
+
+
+<p>Chose dates, and click button to generate Delta:</p>
+
+<div class="tab">
+  <div class="tablinks" onclick="openTab(event, 'fedArticle_0')" id="defaultOpen">
+    <label for="fedstate_0">Previous FED Statment: </label>
+    <select id="fedstate_0" onchange="extractFedstate(event, 'fedstate_0', 'screen_0')"> 
+       <option value=''> Select Date </option>
+    </select>
+  </div>
+  
+  <div class="tablinks" onclick="openTab(event, 'fedArticle_1')">
+    <label for="fedstate_1">Current FED Statment: &nbsp;</label>
+    <select id="fedstate_1" onchange="extractFedstate(event, 'fedstate_1', 'screen_1')">
+       <option value=''> Select Date </option>
+    </select>
+  </div>
+  
+  <div class="tablinks" onclick="openTab(event, 'deltaArticle')">
+     <button onclick="processDelta(event)">Calculate Delta</button>
+     <div id="deltaBar"></div>
+  </div>
+  
+  <div class="tablinks" onclick="openTab(event, 'nlpHisto')">
+     <h4 style="text-align: center;"> NLP historical graph</h4>
+  </div>
+ 
+</div>
+
+<div id="fedArticle_0" class="tabcontent">
+  <p id="screen_0"> </p>
+</div>
+
+<div id="fedArticle_1" class="tabcontent">
+  <p id="screen_1"> </p>
+</div>
+
+<div id="deltaArticle" class="tabcontent">
+</div>
+
+<div id="nlpHisto" class="tabcontent">
+    <img  id="nlpFig" src="{{url_for('static', filename='historicNlp.png')}}">
+</div>
+  
+<script>
+
+function getToDay(){
+   let now = new Date();
+   let month = '0'+(now.getMonth()+1);
+   let day = '0'+now.getDate();
+   var TODAY = ''+now.getFullYear()+month.substr(month.length-2)+day.substr(day.length-2);
+   return TODAY;
+}
+
+
+function extractFedstate(event, key, screen) {
+  document.getElementById('deltaArticle').innerHTML = ""
+  var elem = document.getElementById("deltaBar");  
+  elem.style.width = '10%'; 
+  
+  var sdate = document.getElementById(key).value;
+  var jsonarticle = fetch('/readArticle?sda='+sdate).then((response) => response.json());
+  const readArticle = async () => {
+    const article = await jsonarticle;
+    document.getElementById(screen).innerHTML = article;
+  };
+  
+  readArticle();
+  
+}
+
+function openTab(evt, cityName) {
+  
+  var i, tabcontent, tablinks;
+  tabcontent = document.getElementsByClassName("tabcontent");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("tablinks");
+  for (i = 0; i < tablinks.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" active", "");
+  }
+  document.getElementById(cityName).style.display = "block";
+  evt.currentTarget.className += " active";
+}
+
+var stopProgBar = true
+async function progressBar() {  
+       var i = 1;
+       var elem = document.getElementById("deltaBar");
+       var width = 1;
+       var id = setInterval(frame, 10);
+       function frame() {
+          if (width >= 100) {
+             if(stopProgBar){
+                clearInterval(id);
+                i = 0;
+             }else{
+                i = 0;
+                width = 1
+             }
+          } else {
+             width++;
+            elem.style.width = width + "%";
+         }
+      }
+}
+
+
+function processDelta(evt) {
+    stopProgBar = false
+    progressBar();
+    var sdate0 = document.getElementById('fedstate_0').value;
+    var sdate1 = document.getElementById('fedstate_1').value;
+    var jsondelta = fetch('/deltaArticles?sda0='+sdate0+'&sda1='+sdate1).then((response) => response.json());
+    const deltaArticles = async () => {
+       const delta = await jsondelta;
+       document.getElementById('deltaArticle').innerHTML = delta;
+       stopProgBar = true
+    };
+  
+  deltaArticles();
+  
+   
+
+}
+
+
+// Get the element with id="defaultOpen" and click on it
+document.getElementById("defaultOpen").click();
+
+// refresh calendar
+// init calendar
+var calendar = []
+const jsoncalendar = fetch("/getCalendar")
+  .then((response) => response.json());
+  
+  
+function refreshCalendar(newDate) {
+
+   var newsElem = document.getElementById("news");
+   var imgElem = document.getElementById("flag");
+   
+   if(newDate != null){
+      if(newDate > calendar[0]){
+         calendar.unshift(newDate);
+      }
+      lastDate = calendar[0];
+      
+      newsElem.innerHTML = lastDate;
+   
+      var options = "<option value=''> Select Date </option>";
+      for(var i in calendar)
+      {
+        options += "<option>"+ calendar[i] +"</option>";
+      }
+  
+      var elem0= document.getElementById("fedstate_0");
+      var selected0 = elem0.value;
+      elem0.innerHTML = options;
+      elem0.value = selected0;
+  
+      var elem1= document.getElementById("fedstate_1");
+      var selected1 = elem1.value;
+      elem1.innerHTML = options;
+      elem1.value = selected1;
+      
+   }
+  
+   if(newsElem.innerHTML == getToDay()){
+        imgElem.style.display = "inline-block";
+   }else {
+        imgElem.style.display = "none";
+   }
+    
+    
+   var nlpFigImg = document.getElementById("nlpFig");
+   nlpFigImg.src = nlpFigImg.src.split("?")[0] + "?" + new Date().getTime();
+
+}
+
+
+
+const initCalendar = async () => {
+    calendar = await jsoncalendar;
+    refreshCalendar(calendar[0]);
+};
+  
+initCalendar();
+
+
+
+
+
+
+
+var updateCalendar = function(){
+    const jsonUpdate = fetch('/ckeckUpdate').then(response => response.json());
+    const upDate = async () => {
+      const lastDate = await jsonUpdate;
+      refreshCalendar(lastDate); 
+    };
+  
+    upDate();
+}
+
+
+var interval = setInterval(updateCalendar, 60000);
+
+window.addEventListener('unload', function (e) {
+       clearInterval(interval);
+       fetch('/quit')
+});
+
+
+</script>
+   
+</body>
+</html> 
